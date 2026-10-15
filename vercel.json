@@ -8,7 +8,6 @@
         "includeFiles": "migrations/**"
       }
     },
-        { "handle": "filesystem" },
     {
       "src": "package.json",
       "use": "@vercel/static-build",
@@ -18,6 +17,7 @@
     }
   ],
   "routes": [
+    { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api/index.js?__api_path=$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
