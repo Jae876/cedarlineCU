@@ -3,7 +3,7 @@
 ## Local setup
 
 1. Create a Neon PostgreSQL project and copy its pooled connection string, including `sslmode=require`.
-2. Copy `.env.example` to `.env` and set `DATABASE_URL`, `ADMIN_MASTER_PASSWORD`, and `APP_URL`. Keep `.env` server-side and out of source control; the application reads `DATABASE_URL` from the server environment.
+2. In Vercel Project Settings > Environment Variables, add `DATABASE_URL` (the Neon pooled URL with `sslmode=require`), `ADMIN_MASTER_PASSWORD`, and `APP_URL`. Assign them to each Vercel environment you use. The app reads runtime environment variables and does not load `.env` files.
 3. Install dependencies with `npm install`.
 4. Start the local Vite app and temporary API with `npm run dev:stack`, then open `http://localhost:5173`.
 

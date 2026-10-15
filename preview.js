@@ -14,7 +14,7 @@ const port = Number(process.env.API_PORT || 3001);
 app.locals.ready.then(() => {
   const server = app.listen(port, () => {
     console.log(`Temporary API preview: http://localhost:${port}`);
-    console.log(process.env.ADMIN_MASTER_PASSWORD ? 'Admin password loaded from server-side .env.' : `Temporary admin password: ${previewPassword}`);
+    console.log(process.env.ADMIN_MASTER_PASSWORD ? 'Admin password loaded from the server environment.' : `Temporary admin password: ${previewPassword}`);
     console.log(usesNeon ? 'Neon PostgreSQL persistence is enabled.' : 'Preview data is in-memory and is discarded when this process stops.');
   });
   server.on('error', (error) => {

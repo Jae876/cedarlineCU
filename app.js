@@ -4,7 +4,6 @@ const fs = require('fs/promises');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const SESSION_COOKIE = 'cedarline_session';
 const SESSION_MS = 8 * 60 * 60 * 1000;
