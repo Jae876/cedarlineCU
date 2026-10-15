@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cedarline tree mark">
+  <rect width="64" height="64" rx="8" fill="#1769a6"/>
+  <circle cx="47" cy="16" r="7" fill="#f2bf51"/>
+  <path d="M31 9 20 23h7L16 35h11L14 47h15v10h8V47h13L39 35h10L37 23h7L31 9Z" fill="#fff"/>
+  <path d="M31 27v30" fill="none" stroke="#dceef7" stroke-width="3"/>
+</svg>
