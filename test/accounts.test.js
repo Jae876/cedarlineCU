@@ -38,6 +38,13 @@ async function signUpUser(email = 'member@example.com') {
   return { user, response };
 }
 
+test('health endpoint confirms database readiness without exposing configuration', async () => {
+  const response = await request(app).get('/api/health');
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { ok: true, database: 'connected' });
+  assert.equal(response.headers['cache-control'], 'no-store');
+});
+
 test('master password protects admin routes and returns a server-issued session', async () => {
   assert.equal((await request(app).get('/api/admin/users')).status, 401);
   assert.equal((await request(app).get('/api/admin/stats')).status, 401);

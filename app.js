@@ -235,7 +235,8 @@ async function getUserDetails(database, userId) {
 }
 
 function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
-  const database = pool || new Pool({ connectionString: process.env.DATABASE_URL });
+  const databaseConnectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL;
+  const database = pool || new Pool({ connectionString: databaseConnectionString });
   const masterPassword = adminPassword ?? process.env.ADMIN_MASTER_PASSWORD;
   const app = express();
   const migrationDirectory = path.join(__dirname, 'migrations');
@@ -243,7 +244,11 @@ function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
   function ensureReady() {
     if (!initializeDatabase) return Promise.resolve();
     if (!ready) {
-      ready = fs.readdir(migrationDirectory).then(async (files) => {
+      ready = Promise.resolve().then(async () => {
+        if (!pool && !databaseConnectionString) {
+          throw new Error('DATABASE_URL or POSTGRES_URL must be configured.');
+        }
+        const files = await fs.readdir(migrationDirectory);
         const migrationFiles = files.filter((file) => /^\d+_[\w-]+\.sql$/.test(file)).sort();
         await database.query('CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY)');
         await database.query("INSERT INTO schema_migrations (version) VALUES ('__migration_lock__') ON CONFLICT DO NOTHING");
@@ -293,6 +298,17 @@ function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
+  app.get('/api/health', async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      await ensureReady();
+      await database.query('SELECT 1');
+      return res.json({ ok: true, database: 'connected' });
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return res.status(503).json({ ok: false, database: 'unavailable' });
+    }
+  });
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
     ensureReady().then(() => next()).catch(next);
