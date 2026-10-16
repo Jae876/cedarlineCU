@@ -118,6 +118,19 @@ test('admin users route creates, lists, updates balances, and deletes a user wit
   const compatibilityOpening = await pool.query('SELECT description, date FROM transactions WHERE account_id = (SELECT id FROM accounts WHERE account_number = $1) AND type = $2', [created.body.user.accountNumber, 'opening_balance']);
   assert.equal(compatibilityOpening.rows[0].description, 'Initial account funding');
   assert.equal(new Date(compatibilityOpening.rows[0].date).toISOString().slice(0, 10), '2021-06-14');
+  const generatedTransfers = await pool.query(
+    `SELECT transaction_type, amount_cents, occurred_at, transaction_id
+     FROM account_transactions
+     WHERE account_id = (SELECT id FROM accounts WHERE account_number = $1) AND generated = TRUE
+     ORDER BY occurred_at, id`,
+    [created.body.user.accountNumber]
+  );
+  assert.equal(generatedTransfers.rows.length, 8);
+  assert.ok(generatedTransfers.rows.every((row) => row.transaction_type === 'transfer'));
+  assert.equal(generatedTransfers.rows.reduce((total, row) => total + Number(row.amount_cents), 0), 0);
+  assert.ok(new Date(generatedTransfers.rows[0].occurred_at) > new Date(openingLedger.rows[0].occurred_at));
+  assert.ok(generatedTransfers.rows.every((row) => new Date(row.occurred_at) <= new Date()));
+  assert.ok(generatedTransfers.rows.every((row) => /^TXN-[A-Z0-9]+-[A-F0-9]{12}$/.test(row.transaction_id)));
   const accountIdForNormalization = (await pool.query('SELECT id FROM accounts WHERE account_number = $1', [created.body.user.accountNumber])).rows[0].id;
   await pool.query("UPDATE account_transactions SET description = 'Fictional opening balance set by administrator' WHERE account_id = $1 AND transaction_type = 'opening_balance'", [accountIdForNormalization]);
   await pool.query("UPDATE transactions SET description = 'Fictional opening balance set by administrator' WHERE account_id = $1 AND type = 'opening_balance'", [accountIdForNormalization]);
@@ -157,9 +170,9 @@ test('admin users route creates, lists, updates balances, and deletes a user wit
   });
   assert.equal(updated.status, 200);
   const ledger = await pool.query('SELECT transaction_type, amount_cents, balance_after_cents FROM account_transactions ORDER BY id');
-  assert.equal(ledger.rows.length, 2);
+  assert.equal(ledger.rows.length, 10);
   assert.deepEqual([ledger.rows[0].transaction_type, Number(ledger.rows[0].amount_cents), Number(ledger.rows[0].balance_after_cents)], ['opening_balance', 125037, 125037]);
-  assert.deepEqual([Number(ledger.rows[1].amount_cents), Number(ledger.rows[1].balance_after_cents)], [74962, 199999]);
+  assert.deepEqual([Number(ledger.rows.at(-1).amount_cents), Number(ledger.rows.at(-1).balance_after_cents)], [74962, 199999]);
   const savedBalance = await pool.query('SELECT balance_cents FROM accounts WHERE id = $1', [accountId]);
   assert.equal(Number(savedBalance.rows[0].balance_cents), 199999);
   const member = request.agent(app);
@@ -174,7 +187,7 @@ test('admin users route creates, lists, updates balances, and deletes a user wit
   assert.equal((await replacementAdmin.post('/api/auth/admin-login').send({ password: 'test-master-secret' })).status, 200);
   const persistedUsers = await replacementAdmin.get('/api/admin/users');
   assert.equal(persistedUsers.body.users[0].balance, 1999.99);
-  assert.equal(persistedUsers.body.users[0].transactionCount, 2);
+  assert.equal(persistedUsers.body.users[0].transactionCount, 10);
   const audit = await replacementAdmin.get('/api/admin/audit');
   assert.ok(audit.body.events.some((event) => event.action === 'account_created'));
   assert.ok(audit.body.events.some((event) => event.action === 'account_updated'));
@@ -208,7 +221,7 @@ test('confirmed demo deposit and withdrawal persist balances, history, and a wit
   await admin.put('/api/admin/payment-settings').send({ paymentMethod: 'ACH', accountNumber: '1234567890', routingNumber: '123456789', notes: 'Fictional demo instructions' });
   const submitted = await user.post('/api/transactions').send({ operation: 'deposit', amount: '25.50', paymentMethod: 'ACH', reference: 'TEST-01' });
   assert.equal(submitted.status, 201);
-  assert.match(submitted.body.request.transaction_id, /^FIC-[A-F0-9]{20}$/);
+  assert.match(submitted.body.request.transaction_id, /^TXN-[A-Z0-9]+-[A-F0-9]{12}$/);
   const pendingHistory = (await user.get('/api/auth/verify')).body.user.account.transactions;
   assert.equal(pendingHistory.at(-1).status, 'completed');
   assert.equal(pendingHistory.at(-1).transactionId, submitted.body.request.transaction_id);

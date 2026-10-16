@@ -1,0 +1,1 @@
+-- Legacy transaction IDs are rewritten by the startup migration handler.

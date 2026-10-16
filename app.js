@@ -30,12 +30,12 @@ function parseAccountCreatedAt(value) {
   if (value === undefined || value === null || value === '') return new Date();
   const dateOnly = String(value);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly) || dateOnly > new Date().toISOString().slice(0, 10)) return null;
-  const createdAt = new Date(`${dateOnly}T12:00:00.000Z`);
+  const createdAt = new Date(`${dateOnly}T00:00:00.000Z`);
   return Number.isNaN(createdAt.getTime()) || createdAt.toISOString().slice(0, 10) !== dateOnly ? null : createdAt;
 }
 
 function createTransactionId() {
-  return `FIC-${crypto.randomBytes(10).toString('hex').toUpperCase()}`;
+  return `TXN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
 function createFictionalAccountNumber() {
@@ -277,6 +277,19 @@ function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
                 );
                 for (const row of historyOpeningRows.rows) {
                   await client.query('UPDATE transactions SET date = $1 WHERE id = $2', [row.created_at, row.id]);
+                }
+              }
+              if (version === '012_replace_legacy_transaction_ids') {
+                const legacyIds = new Set();
+                for (const table of ['account_transactions', 'transactions', 'account_requests']) {
+                  const result = await client.query(`SELECT transaction_id FROM ${table} WHERE transaction_id LIKE 'FIC-%'`);
+                  for (const row of result.rows) legacyIds.add(row.transaction_id);
+                }
+                for (const legacyId of legacyIds) {
+                  const transactionId = createTransactionId();
+                  await client.query('UPDATE account_transactions SET transaction_id = $1 WHERE transaction_id = $2', [transactionId, legacyId]);
+                  await client.query('UPDATE transactions SET transaction_id = $1 WHERE transaction_id = $2', [transactionId, legacyId]);
+                  await client.query('UPDATE account_requests SET transaction_id = $1 WHERE transaction_id = $2', [transactionId, legacyId]);
                 }
               }
               await client.query('INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT DO NOTHING', [version]);
@@ -522,6 +535,27 @@ function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
           source: 'admin_opening_balance',
           description: 'Initial account funding',
           occurredAt: account.created_at,
+        });
+      }
+      const historyStart = new Date(account.created_at).getTime();
+      const historyEnd = Date.now();
+      const generatedTransferCount = 8;
+      const transferAmounts = Array.from({ length: generatedTransferCount / 2 }, () => crypto.randomInt(2500, 50001));
+      for (let index = 0; index < generatedTransferCount; index += 1) {
+        const transferCents = transferAmounts[Math.floor(index / 2)];
+        const isIncoming = index % 2 === 0;
+        const amountCents = isIncoming ? transferCents : -transferCents;
+        const balanceAfterCents = balanceCents + (isIncoming ? transferCents : 0);
+        const occurredAt = new Date(historyStart + Math.floor(((historyEnd - historyStart) * (index + 1)) / (generatedTransferCount + 1)));
+        await recordLedgerEvent(client, {
+          accountId: account.id,
+          type: 'transfer',
+          amountCents,
+          balanceAfterCents,
+          source: 'admin_generated_transfer',
+          description: `${isIncoming ? 'Incoming' : 'Outgoing'} transfer (fictional demo)`,
+          generated: true,
+          occurredAt,
         });
       }
       await recordAdminAudit(client, 'account_created', userId, { email, accountType, balanceCents, accountNumber, routingNumber, createdAt: account.created_at });

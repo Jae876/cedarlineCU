@@ -63,7 +63,7 @@ export default function ProfilePage() {
       <section className="panel app-panel profile-grid">
         <div><span className="account-label">Current balance</span><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(currentBalance)}</strong></div>
         <div><span className="account-label">Buying power</span><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(user.account.buyingPower)}</strong></div>
-        <div><span className="account-label">Account created</span><strong>{new Date(user.account.createdAt).toLocaleDateString()}</strong></div>
+        <div><span className="account-label">Account created</span><strong>{new Date(user.account.createdAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}</strong></div>
         <div><span className="account-label">Account type</span><strong className="capitalize">{user.accountType}</strong></div>
       </section>
       <section className="panel app-panel">
