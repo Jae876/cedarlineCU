@@ -60,7 +60,7 @@ export default function SignupPage() {
       <section className="panel app-auth-panel">
         <p className="auth-kicker">Membership</p>
         <h1 className="page-title">Create your account</h1>
-        <p className="auth-intro">Create a fictional demo account. No real banking or payment services are provided.</p>
+        <p className="auth-intro"> Create your online banking profile .</p>
         {error && <div className="form-error" role="alert"><AlertCircle size={18} /> {error}</div>}
         <form className="stack-form app-form" onSubmit={submit}>
           <div className="app-grid">
