@@ -539,21 +539,45 @@ function createApp({ pool, adminPassword, initializeDatabase = true } = {}) {
       }
       const historyStart = new Date(account.created_at).getTime();
       const historyEnd = Date.now();
-      const generatedTransferCount = 8;
-      const transferAmounts = Array.from({ length: generatedTransferCount / 2 }, () => crypto.randomInt(2500, 50001));
-      for (let index = 0; index < generatedTransferCount; index += 1) {
-        const transferCents = transferAmounts[Math.floor(index / 2)];
-        const isIncoming = index % 2 === 0;
-        const amountCents = isIncoming ? transferCents : -transferCents;
-        const balanceAfterCents = balanceCents + (isIncoming ? transferCents : 0);
-        const occurredAt = new Date(historyStart + Math.floor(((historyEnd - historyStart) * (index + 1)) / (generatedTransferCount + 1)));
+      const pairCount = crypto.randomInt(4, 11);
+      const splitPairIndex = pairCount < 10 && crypto.randomInt(0, 2) ? crypto.randomInt(0, pairCount) : -1;
+      const activities = [];
+      const incomingOptions = [
+        { type: 'deposit', description: 'Payroll deposit' },
+        { type: 'transfer', description: 'Transfer from Jordan Reed' },
+        { type: 'deposit', description: 'Refund from Greenfield Market' },
+      ];
+      const outgoingOptions = [
+        { type: 'bill_payment', description: 'Electric bill payment - Lakeview Energy' },
+        { type: 'bill_payment', description: 'Internet bill payment - MetroNet' },
+        { type: 'card_purchase', description: 'Card purchase - Northstar Market' },
+        { type: 'card_purchase', description: 'Card purchase - Greenfield Grocery' },
+        { type: 'transfer', description: 'Transfer to Casey Morgan' },
+      ];
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+        const amountCents = crypto.randomInt(1250, 25001) * 2;
+        const incoming = pairIndex === 0 ? incomingOptions[0] : incomingOptions[crypto.randomInt(0, incomingOptions.length)];
+        const outgoing = pairIndex === 0 ? outgoingOptions[0] : pairIndex === 1 ? outgoingOptions[2] : outgoingOptions[crypto.randomInt(0, outgoingOptions.length)];
+        activities.push({ ...incoming, amountCents });
+        if (pairIndex === splitPairIndex) {
+          activities.push({ ...outgoing, amountCents: -Math.floor(amountCents / 2) });
+          activities.push({ ...outgoing, amountCents: -(amountCents - Math.floor(amountCents / 2)) });
+        } else {
+          activities.push({ ...outgoing, amountCents: -amountCents });
+        }
+      }
+      let runningBalanceCents = balanceCents;
+      for (let index = 0; index < activities.length; index += 1) {
+        const activity = activities[index];
+        runningBalanceCents += activity.amountCents;
+        const occurredAt = new Date(historyStart + Math.floor(((historyEnd - historyStart) * (index + 1)) / (activities.length + 1)));
         await recordLedgerEvent(client, {
           accountId: account.id,
-          type: 'transfer',
-          amountCents,
-          balanceAfterCents,
-          source: 'admin_generated_transfer',
-          description: `${isIncoming ? 'Incoming' : 'Outgoing'} transfer (fictional demo)`,
+          type: activity.type,
+          amountCents: activity.amountCents,
+          balanceAfterCents: runningBalanceCents,
+          source: 'admin_generated_activity',
+          description: activity.description,
           generated: true,
           occurredAt,
         });

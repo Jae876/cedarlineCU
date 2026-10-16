@@ -303,7 +303,6 @@
 .history-panel .app-table th,.app-admin .app-table th { color: #6b7a74; font-size: 0.68rem; letter-spacing: 0; }
 .history-panel .app-table td,.app-admin .app-table td { padding: 0.72rem 0.55rem; font-size: 0.8rem; }
 .transaction-id { display: block; max-width: 16rem; margin-top: 0.25rem; color: #76837d; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.68rem; overflow-wrap: anywhere; }
-.generated-label { display: block; color: #83673e; font-size: 0.69rem; }
 .text-button { padding: 0; border: 0; background: none; color: #1769a6; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .settings-section { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: 1.2rem 1.4rem; border: 1px solid var(--bank-line); background: #fff; }
 .settings-section h2 { margin: 0.2rem 0; color: var(--bank-ink); font-size: 1.05rem; }
